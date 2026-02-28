@@ -19,7 +19,11 @@ public:
     void begin(RuntimeSettings* s = nullptr) {
         settings = s;
         strip.begin();
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, 0);
+        }
         strip.show();
+        
         uint8_t defaultBright = settings ? settings->defaultBrightness : DEFAULT_BRIGHTNESS;
         strip.setBrightness(defaultBright);
         isOn = false;
@@ -33,7 +37,6 @@ public:
         isOn = true;
     }
     
-    // Włącz z domyślnym kolorem z ustawień
     void turnOnDefault() {
         uint8_t r = settings ? settings->defaultColorR : DEFAULT_COLOR_R;
         uint8_t g = settings ? settings->defaultColorG : DEFAULT_COLOR_G;
@@ -41,7 +44,6 @@ public:
         turnOn(r, g, b);
     }
     
-    // Włącz z kolorem dla wykrycia ruchu
     void turnOnMotion() {
         uint8_t r = settings ? settings->motionColorR : MOTION_COLOR_R;
         uint8_t g = settings ? settings->motionColorG : MOTION_COLOR_G;
@@ -50,7 +52,10 @@ public:
     }
 
     void turnOff() {
-        strip.clear();
+        // POPRAWKA: wyraźnie ustaw każdy piksel na czarny zamiast clear()
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, 0, 0, 0);  // RGB(0,0,0) = czarny
+        }
         strip.show();
         isOn = false;
     }

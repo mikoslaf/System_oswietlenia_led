@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // ============== PINY (nie edytowalne przez web) ==============
-#define LED_PIN 1
+#define LED_PIN 4
 #define LED_COUNT 8
 #define PIR_PIN 2
 #define LDR_PIN A0
