@@ -1,39 +1,42 @@
 #ifndef LIGHT_CONTROLLER_H
 #define LIGHT_CONTROLLER_H
 
-#include <Adafruit_NeoPixel.h>
+#include <FastLED.h>
 #include "Config.h"
 #include "RuntimeSettings.h"
 
 class LightController {
 private:
-    Adafruit_NeoPixel strip;
+    CRGB leds[LED_COUNT];
     bool isOn;
     uint8_t brightness;
     RuntimeSettings* settings;
 
 public:
-    LightController() : strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800), 
-                        settings(nullptr), isOn(false), brightness(DEFAULT_BRIGHTNESS) {}
+    // W FastLED nie inicjalizujemy paska w konstruktorze, tylko w begin()
+    LightController() : settings(nullptr), isOn(false), brightness(DEFAULT_BRIGHTNESS) {}
 
     void begin(RuntimeSettings* s = nullptr) {
         settings = s;
-        strip.begin();
-        for (int i = 0; i < LED_COUNT; i++) {
-            strip.setPixelColor(i, 0);
-        }
-        strip.show();
+
+        // Inicjalizacja FastLED dla chipsetu WS2812B
+        // LED_PIN musi być zdefiniowany w Config.h jako stała (np. #define LED_PIN 1)
+        FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, LED_COUNT);
         
         uint8_t defaultBright = settings ? settings->defaultBrightness : DEFAULT_BRIGHTNESS;
-        strip.setBrightness(defaultBright);
+        FastLED.setBrightness(defaultBright);
+        
+        // Wyczyszczenie paska na starcie
+        turnOff();
+        
         isOn = false;
         brightness = defaultBright;
     }
 
     void turnOn(uint8_t r, uint8_t g, uint8_t b) {
-        for (int i = 0; i < LED_COUNT; i++)
-            strip.setPixelColor(i, strip.Color(r, g, b));
-        strip.show();
+        // fill_solid to bardzo szybka metoda FastLED na ustawienie całego paska
+        fill_solid(leds, LED_COUNT, CRGB(r, g, b));
+        FastLED.show();
         isOn = true;
     }
     
@@ -52,18 +55,17 @@ public:
     }
 
     void turnOff() {
-        // POPRAWKA: wyraźnie ustaw każdy piksel na czarny zamiast clear()
-        for (int i = 0; i < LED_COUNT; i++) {
-            strip.setPixelColor(i, 0, 0, 0);  // RGB(0,0,0) = czarny
-        }
-        strip.show();
+        // CRGB::Black to odpowiednik RGB(0,0,0)
+        fill_solid(leds, LED_COUNT, CRGB::Black);
+        FastLED.show();
         isOn = false;
     }
 
     void setBrightness(uint8_t value) {
         brightness = value;
-        strip.setBrightness(brightness);
-        if (isOn) strip.show();
+        FastLED.setBrightness(brightness);
+        // FastLED automatycznie przelicza jasność przy wywołaniu show()
+        FastLED.show();
     }
     
     void applySettingsBrightness() {
