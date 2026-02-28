@@ -24,11 +24,14 @@ private:
         return value.toInt();
     }
     
-    void sendSettingsPage(WiFiClient& client) {
+    void sendPageHeader(WiFiClient& client) {
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html; charset=utf-8");
         client.println("Connection: close");
         client.println();
+    }
+    
+    void sendStyles(WiFiClient& client) {
         client.println("<!DOCTYPE html><html><head>");
         client.println("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
         client.println("<style>");
@@ -50,9 +53,26 @@ private:
         client.println(".color-inputs input{width:33%;text-align:center;}");
         client.println(".info{font-size:12px;color:#888;margin-top:8px;font-style:italic;}");
         client.println(".color-preview{height:30px;border-radius:5px;margin-top:10px;border:2px solid #333;}");
-        client.println("</style></head><body>");
-        client.println("<div class='container'>");
+        client.println(".alert{padding:15px;border-radius:10px;margin-bottom:20px;text-align:center;font-weight:bold;}");
+        client.println(".alert-success{background:linear-gradient(45deg,#28a745,#20c997);color:white;}");
+        client.println(".alert-info{background:linear-gradient(45deg,#17a2b8,#138496);color:white;}");
+        client.println("</style></head><body><div class='container'>");
+    }
+    
+    void sendSettingsPage(WiFiClient& client, const char* alertMsg = nullptr, const char* alertClass = nullptr) {
+        sendPageHeader(client);
+        sendStyles(client);
+        
         client.println("<h1>⚙️ Ustawienia</h1>");
+        
+        // Komunikat po akcji
+        if (alertMsg != nullptr) {
+            client.print("<div class='alert ");
+            client.print(alertClass);
+            client.print("'>");
+            client.print(alertMsg);
+            client.println("</div>");
+        }
         
         client.println("<a href='/'><input type='button' value='← Powrót' class='btn-back'></a>");
         
@@ -66,7 +86,7 @@ private:
         client.print("<input type='number' name='lt' min='0' max='1023' value='");
         client.print(settings->lightThreshold);
         client.println("'>");
-        client.println("<div class='info'>Wartość poniżej której jest \"ciemno\" (wyższa = czulsze)</div>");
+        client.println("<div class='info'>Wartość poniżej której jest ciemno (wyższa = czulsze)</div>");
         client.println("</div>");
         
         client.println("<div class='form-group'>");
@@ -154,51 +174,32 @@ private:
     }
     
     void sendMainPage(WiFiClient& client) {
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-Type: text/html; charset=utf-8");
-        client.println("Connection: close");
-        client.println();
-        client.println("<!DOCTYPE html><html><head>");
-        client.println("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
-        client.println("<style>");
-        client.println("body{font-family:Arial;margin:0;padding:20px;background:#1a1a2e;}");
-        client.println(".container{max-width:400px;margin:0 auto;background:#16213e;padding:20px;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.3);}");
-        client.println("h1{text-align:center;color:#e94560;margin-bottom:25px;}");
-        client.println("a{display:block;margin:12px 0;padding:18px;color:white;text-decoration:none;border-radius:10px;text-align:center;font-weight:bold;font-size:16px;transition:transform 0.2s,box-shadow 0.2s;}");
-        client.println("a:hover{transform:scale(1.03);box-shadow:0 4px 15px rgba(0,0,0,0.3);}");
-        client.println("a.on{background:linear-gradient(45deg,#28a745,#20c997);}");
-        client.println("a.off{background:linear-gradient(45deg,#dc3545,#e94560);}");
-        client.println("a.auto{background:linear-gradient(45deg,#007bff,#6f42c1);}");
-        client.println("a.manual{background:linear-gradient(45deg,#6c757d,#495057);}");
-        client.println("a.settings{background:linear-gradient(45deg,#17a2b8,#138496);}");
-        client.println(".info{margin:15px 0;padding:15px;background:#0f3460;border-left:4px solid #e94560;border-radius:0 10px 10px 0;color:#ccc;font-size:14px;}");
-        client.println(".info b{color:#e94560;}");
-        client.println("</style></head><body>");
-        client.println("<div class='container'>");
-        client.println("<h1>💡 Smart Light</h1>");
-        client.println("<a href='/ON' class='on'>🔆 Włącz światło</a>");
-        client.println("<a href='/OFF' class='off'>🌑 Wyłącz światło</a>");
-        client.println("<a href='/AUTO' class='auto'>🤖 Tryb automatyczny</a>");
-        client.println("<a href='/MANUAL' class='manual'>✋ Tryb manualny</a>");
-        client.println("<a href='/settings' class='settings'>⚙️ Ustawienia</a>");
+        sendPageHeader(client);
+        sendStyles(client);
         
-        client.print("<div class='info'><b>Próg światła:</b> ");
+        client.println("<h1>💡 Smart Light</h1>");
+        client.println("<a href='/ON'><input type='button' value='🔆 Włącz światło' class='btn-save'></a>");
+        client.println("<a href='/OFF'><input type='button' value='🌑 Wyłącz światło' class='btn-reset'></a>");
+        
+        client.println("<style>");
+        client.println(".btn-auto{background:linear-gradient(45deg,#007bff,#6f42c1);color:white;}");
+        client.println(".btn-manual{background:linear-gradient(45deg,#6c757d,#495057);color:white;}");
+        client.println(".btn-settings{background:linear-gradient(45deg,#17a2b8,#138496);color:white;}");
+        client.println("</style>");
+        
+        client.println("<a href='/AUTO'><input type='button' value='🤖 Tryb automatyczny' class='btn-auto'></a>");
+        client.println("<a href='/MANUAL'><input type='button' value='✋ Tryb manualny' class='btn-manual'></a>");
+        client.println("<a href='/settings'><input type='button' value='⚙️ Ustawienia' class='btn-settings'></a>");
+        
+        client.print("<div class='form-group'><label>📊 Próg: ");
         client.print(settings->lightThreshold);
-        client.print(" | <b>Timeout:</b> ");
+        client.print(" | ⏱️ Timeout: ");
         client.print(settings->motionTimeout / 1000);
-        client.print("s | <b>Jasność:</b> ");
+        client.print("s | 🔆 Jasność: ");
         client.print(settings->defaultBrightness);
-        client.println("</div>");
+        client.println("</label></div>");
         
         client.println("</div></body></html>");
-    }
-    
-    void sendRedirect(WiFiClient& client, const char* location) {
-        client.println("HTTP/1.1 302 Found");
-        client.print("Location: ");
-        client.println(location);
-        client.println("Connection: close");
-        client.println();
     }
 
 public:
@@ -218,94 +219,94 @@ public:
 
     String handleClient() {
         WiFiClient client = server.available();
-        if (client) {
-            String request = client.readStringUntil('\r');
-            client.flush();
+        if (!client) return "";
 
-            // Zapis ustawień
-            if (request.indexOf("GET /save?") != -1) {
-                int val;
-                
-                val = getParamValue(request, "lt");
-                if (val >= 0) settings->lightThreshold = val;
-                
-                val = getParamValue(request, "mt");
-                if (val > 0) settings->motionTimeout = (unsigned long)val * 1000;
-                
-                val = getParamValue(request, "ud");
-                if (val >= 0) settings->userActionDisableTime = (unsigned long)val * 1000;
-                
-                val = getParamValue(request, "br");
-                if (val >= 1 && val <= 255) settings->defaultBrightness = (uint8_t)val;
-                
-                val = getParamValue(request, "dr");
-                if (val >= 0 && val <= 255) settings->defaultColorR = (uint8_t)val;
-                
-                val = getParamValue(request, "dg");
-                if (val >= 0 && val <= 255) settings->defaultColorG = (uint8_t)val;
-                
-                val = getParamValue(request, "db");
-                if (val >= 0 && val <= 255) settings->defaultColorB = (uint8_t)val;
-                
-                val = getParamValue(request, "mr");
-                if (val >= 0 && val <= 255) settings->motionColorR = (uint8_t)val;
-                
-                val = getParamValue(request, "mg");
-                if (val >= 0 && val <= 255) settings->motionColorG = (uint8_t)val;
-                
-                val = getParamValue(request, "mb");
-                if (val >= 0 && val <= 255) settings->motionColorB = (uint8_t)val;
-                
-                Serial.println("Settings saved via web panel!");
-                settings->printSettings();
-                
-                sendRedirect(client, "/settings");
-                client.stop();
-                return "SETTINGS_SAVED";
-            }
+        String request = client.readStringUntil('\r');
+        client.flush();
+
+        // Zapis ustawień - wyświetl stronę od razu z komunikatem sukcesu
+        if (request.indexOf("GET /save?") != -1) {
+            int val;
             
-            // Reset ustawień
-            if (request.indexOf("GET /reset") != -1) {
-                settings->reset();
-                Serial.println("Settings reset to defaults!");
-                sendRedirect(client, "/settings");
-                client.stop();
-                return "SETTINGS_RESET";
-            }
+            val = getParamValue(request, "lt");
+            if (val >= 0) settings->lightThreshold = val;
             
-            // Strona ustawień
-            if (request.indexOf("GET /settings") != -1) {
-                sendSettingsPage(client);
-                client.stop();
-                return "";
-            }
-
-            // Komendy sterowania
-            if (request.indexOf("GET /ON") != -1) {
-                sendRedirect(client, "/");
-                client.stop();
-                return "ON";
-            }
-            if (request.indexOf("GET /OFF") != -1) {
-                sendRedirect(client, "/");
-                client.stop();
-                return "OFF";
-            }
-            if (request.indexOf("GET /AUTO") != -1) {
-                sendRedirect(client, "/");
-                client.stop();
-                return "AUTO";
-            }
-            if (request.indexOf("GET /MANUAL") != -1) {
-                sendRedirect(client, "/");
-                client.stop();
-                return "MANUAL";
-            }
-
-            // Strona główna
-            sendMainPage(client);
+            val = getParamValue(request, "mt");
+            if (val > 0) settings->motionTimeout = (unsigned long)val * 1000;
+            
+            val = getParamValue(request, "ud");
+            if (val >= 0) settings->userActionDisableTime = (unsigned long)val * 1000;
+            
+            val = getParamValue(request, "br");
+            if (val >= 1 && val <= 255) settings->defaultBrightness = (uint8_t)val;
+            
+            val = getParamValue(request, "dr");
+            if (val >= 0 && val <= 255) settings->defaultColorR = (uint8_t)val;
+            
+            val = getParamValue(request, "dg");
+            if (val >= 0 && val <= 255) settings->defaultColorG = (uint8_t)val;
+            
+            val = getParamValue(request, "db");
+            if (val >= 0 && val <= 255) settings->defaultColorB = (uint8_t)val;
+            
+            val = getParamValue(request, "mr");
+            if (val >= 0 && val <= 255) settings->motionColorR = (uint8_t)val;
+            
+            val = getParamValue(request, "mg");
+            if (val >= 0 && val <= 255) settings->motionColorG = (uint8_t)val;
+            
+            val = getParamValue(request, "mb");
+            if (val >= 0 && val <= 255) settings->motionColorB = (uint8_t)val;
+            
+            Serial.println("Settings saved via web panel!");
+            settings->printSettings();
+            
+            // Wyświetl stronę ustawień z komunikatem - bez redirecta
+            sendSettingsPage(client, "✅ Ustawienia zapisane pomyślnie!", "alert-success");
             client.stop();
+            return "SETTINGS_SAVED";
         }
+        
+        // Reset ustawień - wyświetl stronę od razu z komunikatem
+        if (request.indexOf("GET /reset") != -1) {
+            settings->reset();
+            Serial.println("Settings reset to defaults!");
+            
+            // Wyświetl stronę ustawień z komunikatem - bez redirecta
+            sendSettingsPage(client, "🔄 Ustawienia przywrócone do domyślnych!", "alert-info");
+            client.stop();
+            return "SETTINGS_RESET";
+        }
+        
+        // Strona ustawień
+        if (request.indexOf("GET /settings") != -1) {
+            sendSettingsPage(client);
+            client.stop();
+            return "";
+        }
+
+        // Komendy sterowania - strona główna od razu po akcji
+        if (request.indexOf("GET /ON") != -1) {
+            client.stop();
+            return "ON";
+        }
+        if (request.indexOf("GET /OFF") != -1) {
+            client.stop();
+            return "OFF";
+        }
+        if (request.indexOf("GET /AUTO") != -1) {
+            client.stop();
+            return "AUTO";
+        }
+        if (request.indexOf("GET /MANUAL") != -1) {
+            client.stop();
+            return "MANUAL";
+        }
+
+        // Strona główna
+        sendMainPage(client);
+        client.stop();
+
         return "";
     }
     
