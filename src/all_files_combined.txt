@@ -1,0 +1,485 @@
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\AutomationManager.h -----
+
+#ifndef AUTOMATION_MANAGER_H
+#define AUTOMATION_MANAGER_H
+
+#include "Config.h"
+#include "Arduino.h"
+
+class AutomationManager {
+private:
+    unsigned long lastMotionTime;
+    bool automationEnabled;
+    unsigned long userDisabledUntil;
+
+public:
+    AutomationManager() : lastMotionTime(0), automationEnabled(true), userDisabledUntil(0) {}
+
+    void enable(bool state) {
+        automationEnabled = state;
+        if (!state) {
+            userDisabledUntil = 0; 
+        }
+    }
+
+    void userAction() {
+        userDisabledUntil = millis() + USER_ACTION_DISABLE_TIME;
+    }
+
+    bool isUserDisabled() {
+        if (userDisabledUntil == 0) return false;
+        
+        if (millis() > userDisabledUntil) {
+            userDisabledUntil = 0;
+            return false;
+        }
+        return true;
+    }
+
+    void motionDetected() {
+        lastMotionTime = millis();
+    }
+
+    bool shouldTurnOff() {
+        return automationEnabled &&
+               (millis() - lastMotionTime > MOTION_TIMEOUT);
+    }
+
+    bool isEnabled() { 
+        return automationEnabled && !isUserDisabled(); 
+    }
+    
+    unsigned long getRemainingDisableTime() {
+        if (userDisabledUntil == 0) return 0;
+        unsigned long remaining = (userDisabledUntil - millis()) / 1000;
+        return (userDisabledUntil > millis()) ? remaining : 0;
+    }
+};
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\Button.h -----
+
+#include <Arduino.h>
+
+#ifndef BUTTON_H
+#define BUTTON_H
+
+class Button {
+private:
+    int pin;
+    bool lastState;
+
+public:
+    Button(int p) : pin(p), lastState(false) {}
+
+    void begin() {
+        pinMode(pin, INPUT_PULLUP);
+    }
+
+    bool pressed() {
+        bool state = !digitalRead(pin);
+        if (state && !lastState) {
+            lastState = true;
+            return true;
+        }
+        if (!state) lastState = false;
+        return false;
+    }
+};
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\Config.h -----
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// Piny
+#define LED_PIN 1
+#define LED_COUNT 8
+
+#define PIR_PIN 2
+#define LDR_PIN A0
+#define BUTTON_PIN 3
+
+// Ustawienia automatyki
+#define LIGHT_THRESHOLD 700
+#define MOTION_TIMEOUT 10000  // 10 sekund 
+
+// NOWOŚĆ: Czas wyłączenia automatyzacji po akcji użytkownika (ms)
+#define USER_ACTION_DISABLE_TIME 5000
+
+// WiFi
+#define WIFI_SSID ""
+#define WIFI_PASS ""
+
+// Serial
+#define SERIAL_BAUD 9600
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\LightController.h -----
+
+#ifndef LIGHT_CONTROLLER_H
+#define LIGHT_CONTROLLER_H
+
+#include <Adafruit_NeoPixel.h>
+#include "Config.h"
+
+class LightController {
+private:
+    Adafruit_NeoPixel strip;
+    bool isOn;
+    uint8_t brightness;
+
+public:
+    LightController() : strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800) {}
+
+    void begin() {
+        strip.begin();
+        strip.show();
+        strip.setBrightness(50);
+        isOn = false;
+        brightness = 50;
+    }
+
+    void turnOn(uint8_t r, uint8_t g, uint8_t b) {
+        for (int i = 0; i < LED_COUNT; i++)
+            strip.setPixelColor(i, strip.Color(r, g, b));
+        strip.show();
+        isOn = true;
+    }
+
+    void turnOff() {
+        strip.clear();
+        strip.show();
+        isOn = false;
+    }
+
+    void setBrightness(uint8_t value) {
+        brightness = value;
+        strip.setBrightness(brightness);
+        strip.show();
+    }
+
+    bool getState() { return isOn; }
+};
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\LightSensor.h -----
+
+#include <Arduino.h>
+
+#ifndef LIGHT_SENSOR_H
+#define LIGHT_SENSOR_H
+
+class LightSensor {
+private:
+    int pin;
+
+public:
+    LightSensor(int p) : pin(p) {
+        pinMode(p, OUTPUT);
+    }
+
+    int readValue() {
+        return analogRead(pin);
+    }
+
+    bool isDark(int threshold) {
+        return readValue() < threshold;
+    }
+
+    bool isBright(int threshold) {
+        return readValue() > threshold;
+    }
+};
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\Logger.h -----
+
+#ifndef LOGGER_H
+#define LOGGER_H
+
+#include <Arduino.h>
+
+// Pomocnicza funkcja wyciągająca samą nazwę pliku ze ścieżki
+inline const char* getFilename(const char* path) {
+    const char* filename = strrchr(path, '\\');  // Windows
+    if (filename) return filename + 1;
+    
+    filename = strrchr(path, '/');               // Unix/Linux
+    if (filename) return filename + 1;
+    
+    return path;
+}
+
+// Główna funkcja logująca zmiany światła
+inline void logLightChange(bool turnedOn, const char* reason, const char* file, int line) {
+    Serial.print("[");
+    Serial.print(getFilename(file));
+    Serial.print(":");
+    Serial.print(line);
+    Serial.print("] ");
+    Serial.print(turnedOn ? "LIGHT ON " : "LIGHT OFF");
+    Serial.print(" | Reason: ");
+    Serial.println(reason);
+}
+
+// Makro dla łatwego użycia - automatycznie wstawia nazwę pliku i linię
+#define LOG_LIGHT_CHANGE(state, reason) logLightChange(state, reason, __FILE__, __LINE__)
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\main.cpp -----
+
+#include "Config.h"
+#include "Logger.h"
+#include "LightController.h"
+#include "MotionSensor.h"
+#include "LightSensor.h"
+#include "Button.h"
+#include "WebServerManager.h"
+#include "AutomationManager.h"
+
+LightController light;
+MotionSensor motion(PIR_PIN);
+LightSensor ldr(LDR_PIN);
+Button button(BUTTON_PIN);
+WebServerManager web;
+AutomationManager automation;
+
+void setup() {
+    Serial.begin(SERIAL_BAUD);
+    delay(1000);
+    
+    light.begin();
+    motion.begin();
+    button.begin();
+    web.begin();
+    
+    LOG_LIGHT_CHANGE(false, "System startup");
+    Serial.println("System initialized. Automation enabled: " + String(automation.isEnabled()));
+}
+
+void loop() {
+    // === Obsługa Web ===
+    String command = web.handleClient();
+    
+    if (command == "ON") {
+        light.turnOn(255,255,255);
+        LOG_LIGHT_CHANGE(true, "Web command ON");
+        automation.userAction();
+        Serial.println("Automation disabled for " + String(USER_ACTION_DISABLE_TIME/1000) + "s due to user action");
+    }
+    
+    if (command == "OFF") {
+        light.turnOff();
+        LOG_LIGHT_CHANGE(false, "Web command OFF");
+        automation.userAction();
+    }
+    
+    if (command == "AUTO") {
+        automation.enable(true);
+        Serial.println("Automation enabled permanently");
+    }
+    
+    if (command == "MANUAL") {
+        automation.enable(false);
+        LOG_LIGHT_CHANGE(light.getState(), "Manual mode activated - automation disabled");
+        Serial.println("Automation disabled manually");
+    }
+
+    // === Obsługa przycisku ===
+    if (button.pressed()) {
+        if (light.getState()) {
+            light.turnOff();
+            LOG_LIGHT_CHANGE(false, "Button pressed");
+        } else {
+            light.turnOn(255,255,255);
+            LOG_LIGHT_CHANGE(true, "Button pressed");
+        }
+        automation.userAction(); 
+    }
+
+    bool motionStarted = motion.motionStarted();
+    bool motionEnded = motion.motionEnded();
+
+    // === Automatyka ===
+    if (automation.isEnabled()) {
+
+        // Włączenie przy ruchu i ciemności
+        if (motionStarted && ldr.isDark(LIGHT_THRESHOLD)) {
+            light.turnOn(255, 180, 100);
+            LOG_LIGHT_CHANGE(true, "Motion started + Dark environment");
+            automation.motionDetected();
+        }
+
+        // Wyłączenie po timeout
+        if (automation.shouldTurnOff()) {
+            if (light.getState()) {
+                light.turnOff();
+                LOG_LIGHT_CHANGE(false, "Motion timeout - no activity");
+            }
+        }
+    } else {
+        // Opcjonalnie: Sprawdzaj co jakiś czas czy minął czas wyłączenia i poinformuj
+        static unsigned long lastCheck = 0;
+        if (millis() - lastCheck > 5000) {
+            lastCheck = millis();
+            if (!automation.isEnabled() && automation.getRemainingDisableTime() > 0) {
+                Serial.println("Automation temporarily disabled. Remaining: " + 
+                             String(automation.getRemainingDisableTime()) + "s");
+            }
+        }
+    }
+}
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\MotionSensor.h -----
+
+#ifndef MOTION_SENSOR_H
+#define MOTION_SENSOR_H
+
+#include <Arduino.h>
+
+class MotionSensor {
+private:
+    int pin;
+    int pirState;
+
+public:
+    MotionSensor(int p) : pin(p), pirState(LOW) {}
+
+    void begin() {
+        pinMode(pin, INPUT);
+    }
+
+    bool motionStarted() {
+        int motion = digitalRead(pin);
+        bool started = false;
+        if (motion == HIGH) {
+            if (pirState == LOW) {
+                pirState = HIGH;
+                started = true;
+            }
+        } else {
+            if (pirState == HIGH) {
+                pirState = LOW;
+            }
+        }
+        return started;
+    }
+
+    bool motionEnded() {
+        int motion = digitalRead(pin);
+        bool ended = false;
+        if (motion == LOW) {
+            if (pirState == HIGH) {
+                pirState = LOW;
+                ended = true;
+            }
+        } else {
+            if (pirState == LOW) {
+                pirState = HIGH;
+            }
+        }
+        return ended;
+    }
+
+    bool isActive() {
+        return digitalRead(pin) == HIGH;
+    }
+    
+    bool detected() {
+        return motionStarted();
+    }
+};
+
+#endif
+
+
+
+----- C:\Users\Lenovo\Documents\PlatformIO\Projects\semV_sw\src\WebServerManager.h -----
+
+#ifndef WEB_SERVER_MANAGER_H
+#define WEB_SERVER_MANAGER_H
+
+#include <WiFiS3.h>
+#include "Config.h"
+
+class WebServerManager {
+private:
+    WiFiServer server;
+
+public:
+    WebServerManager() : server(80) {}
+
+    void begin() {
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        while (WiFi.status() != WL_CONNECTED) delay(1000);
+        server.begin();
+        Serial.println("WiFi connected. IP: " + WiFi.localIP().toString());
+    }
+
+    String handleClient() {
+        WiFiClient client = server.available();
+        if (client) {
+            String request = client.readStringUntil('\r');
+            client.flush();
+
+            if (request.indexOf("/ON") != -1)
+                return "ON";
+            if (request.indexOf("/OFF") != -1)
+                return "OFF";
+            if (request.indexOf("/AUTO") != -1)
+                return "AUTO";
+            if (request.indexOf("/MANUAL") != -1)
+                return "MANUAL";
+
+            // NOWOŚĆ: Rozszerzony interfejs web
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/html; charset=utf-8");
+            client.println("Connection: close");
+            client.println();
+            client.println("<!DOCTYPE html>");
+            client.println("<html><head>");
+            client.println("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+            client.println("<style>body{font-family:Arial;margin:20px;} ");
+            client.println("a{display:block;margin:10px 0;padding:15px;background:#007bff;color:white;text-decoration:none;border-radius:5px;text-align:center;}");
+            client.println("a.manual{background:#6c757d;} a.off{background:#dc3545;} a.on{background:#28a745;}");
+            client.println("div.info{margin:10px 0;padding:10px;background:#f8f9fa;border-left:4px solid #007bff;}");
+            client.println("</style></head><body>");
+            client.println("<h1>💡 Sterowanie oświetleniem</h1>");
+            client.println("<a href='/ON' class='on'>🔆 Włącz światło</a>");
+            client.println("<a href='/OFF' class='off'>🌑 Wyłącz światło</a>");
+            client.println("<a href='/AUTO' class='on'>🤖 Włącz automatykę</a>");
+            client.println("<a href='/MANUAL' class='manual'>✋ Tryb manualny (wył. auto)</a>");
+            client.println("<div class='info'>Automatyka wyłącza się na " + String(USER_ACTION_DISABLE_TIME/1000) + "s po włączeniu/wyłączeniu światła</div>");
+            client.println("</body></html>");
+            client.stop();
+        }
+        return "";
+    }
+};
+
+#endif
+
+
+

@@ -1,0 +1,28 @@
+Transport: Serial 115200
+Response: OK (success) / ERR <reason> (error)
+
+Commands (plaintext):
+- servo1 stop            -> Stop servo 1
+- servo2 stop            -> Stop servo 2
+- servo1 rotate <deg>    -> Rotate servo 1 by <deg> degrees (e.g. servo1 rotate 90; negative allowed)
+- servo2 rotate <deg>    -> Rotate servo 2 by <deg> degrees
+- servo1 spin <ms>       -> Spin servo 1 continuously for <ms> milliseconds (e.g. servo1 spin 2000)
+- servo2 spin <ms>       -> Spin servo 2 continuously for <ms> milliseconds
+
+- rotateBoth <deg1> <deg2> -> Rotate both servos blocking: servo1 by <deg1>, servo2 by <deg2>
+	(alias: rotateBothBlocking <deg1> <deg2>)
+
+Example sequences:
+- servo1 rotate 90
+- servo1 spin 1500
+- servo1 stop
+
+Error responses:
+- ERR BAD_ARGS          -> Bad or missing arguments
+- ERR UNKNOWN_SERVO_CMD -> Unknown command after servo1/servo2
+- ERR UNKNOWN_CMD       -> Unknown command
+
+Notes for AI integrator:
+- Send each command as a single line terminated by a newline ("\n").
+- Wait for the line response before sending the next command (expect "OK" or "ERR ...").
+- Keep commands plaintext only (no JSON).
