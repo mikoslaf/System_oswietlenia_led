@@ -12,14 +12,6 @@ struct RuntimeSettings {
     
     // Ustawienia LED
     uint8_t defaultBrightness;
-    uint8_t defaultColorR;
-    uint8_t defaultColorG;
-    uint8_t defaultColorB;
-    
-    // Kolor przy wykryciu ruchu
-    uint8_t motionColorR;
-    uint8_t motionColorG;
-    uint8_t motionColorB;
     
     RuntimeSettings() {
         reset();
@@ -30,12 +22,6 @@ struct RuntimeSettings {
         motionTimeout = MOTION_TIMEOUT;
         userActionDisableTime = USER_ACTION_DISABLE_TIME;
         defaultBrightness = DEFAULT_BRIGHTNESS;
-        defaultColorR = DEFAULT_COLOR_R;
-        defaultColorG = DEFAULT_COLOR_G;
-        defaultColorB = DEFAULT_COLOR_B;
-        motionColorR = MOTION_COLOR_R;
-        motionColorG = MOTION_COLOR_G;
-        motionColorB = MOTION_COLOR_B;
     }
     
     void printSettings() {
@@ -44,10 +30,6 @@ struct RuntimeSettings {
         Serial.println("Motion timeout: " + String(motionTimeout/1000) + "s");
         Serial.println("User disable time: " + String(userActionDisableTime/1000) + "s");
         Serial.println("Brightness: " + String(defaultBrightness));
-        Serial.println("Default color: RGB(" + String(defaultColorR) + "," + 
-                       String(defaultColorG) + "," + String(defaultColorB) + ")");
-        Serial.println("Motion color: RGB(" + String(motionColorR) + "," + 
-                       String(motionColorG) + "," + String(motionColorB) + ")");
         Serial.println("========================");
     }
 };

@@ -36,7 +36,7 @@ void loop() {
     String command = web.handleClient();
     
     if (command == "ON") {
-        light.turnOnDefault();
+        light.turnOn();
         LOG_LIGHT_CHANGE(true, "Web command ON");
         automation.userAction();
         Serial.println("Automation disabled for " + String(settings.userActionDisableTime/1000) + "s");
@@ -70,7 +70,7 @@ void loop() {
             light.turnOff();
             LOG_LIGHT_CHANGE(false, "Button pressed");
         } else {
-            light.turnOnDefault();
+            light.turnOn();
             LOG_LIGHT_CHANGE(true, "Button pressed");
         }
         automation.userAction(); 
@@ -82,7 +82,7 @@ void loop() {
     if (automation.isEnabled()) {
         // Włączenie przy ruchu i ciemności
         if (motionStarted && ldr.isDark(settings.lightThreshold)) {
-            light.turnOnMotion();
+            light.turnOn();
             LOG_LIGHT_CHANGE(true, "Motion + Dark");
             automation.motionDetected();
         }

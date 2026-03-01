@@ -33,25 +33,11 @@ public:
         brightness = defaultBright;
     }
 
-    void turnOn(uint8_t r, uint8_t g, uint8_t b) {
-        // fill_solid to bardzo szybka metoda FastLED na ustawienie całego paska
-        fill_solid(leds, LED_COUNT, CRGB(r, g, b));
+    void turnOn() {
+        // Włączenie białego światła
+        fill_solid(leds, LED_COUNT, CRGB::White);
         FastLED.show();
         isOn = true;
-    }
-    
-    void turnOnDefault() {
-        uint8_t r = settings ? settings->defaultColorR : DEFAULT_COLOR_R;
-        uint8_t g = settings ? settings->defaultColorG : DEFAULT_COLOR_G;
-        uint8_t b = settings ? settings->defaultColorB : DEFAULT_COLOR_B;
-        turnOn(r, g, b);
-    }
-    
-    void turnOnMotion() {
-        uint8_t r = settings ? settings->motionColorR : MOTION_COLOR_R;
-        uint8_t g = settings ? settings->motionColorG : MOTION_COLOR_G;
-        uint8_t b = settings ? settings->motionColorB : MOTION_COLOR_B;
-        turnOn(r, g, b);
     }
 
     void turnOff() {
